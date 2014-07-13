@@ -16,7 +16,12 @@ our @ISA = qw(Exporter);
 # will save memory.
 
 our %EXPORT_TAGS = ( 'all' => [ qw(
-    new connect
+    new fetch_Auth_Token fetch_Thermostat_Designation fetch_Ambient_Temperature_C 
+    fetch_Target_Temperature_C fetch_Target_Temperature_high_C fetch_Target_Temperature_low_C 
+    fetch_Away_Temperature_low_C fetch_Ambient_Temperature_F fetch_Away_Temperature_low_F 
+    fetch_Away_Temperature_high_F fetch_Target_Temperature_low_F fetch_Target_Temperature_F 
+    fetch_Target_Temperature_high_F fetch_Temperature_Scale fetch_Locale fetch_Name 
+    fetch_Long_Name fetch_HVAC_Mode fetch_SW_Version
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -43,11 +48,11 @@ Device::Nest - Methods for wrapping the Nest API calls so that they are
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 #*****************************************************************
 
@@ -209,7 +214,7 @@ sub fetch_Thermostat_Designation {
       $self->{'thermostat'} = $designation2[0];
       return 1;
     } else {
-      print "Nest->fetch_Deisgnation(): Response from server is not valid\n";
+      print "Nest->fetch_Thermostat_Designation(): Response from server is not valid\n";
       print "  \"".$response->content."\"\n\n";
       return 0;
     }
@@ -243,10 +248,184 @@ sub fetch_Ambient_Temperature_C {
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
-      my $temperature = $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_c'};
-      return $temperature;
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_c'};
     } else {
-      print "Nest->fetch_Ambient_Temperature_Celsius(): Response from server is not valid\n";
+      print "Nest->fetch_Ambient_Temperature_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Target_Temperature_C - Fetch the target temperature reported by Nest in Celcius
+
+ Retrieves the target temperature reported by the Nest in Celcius
+
+   $Nest->fetch_Target_Temperature_C();
+
+   This method accepts no parameters
+ 
+ Returns the target temperature in Celcius
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Target_Temperature_C {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_c'};
+    } else {
+      print "Nest->fetch_Target_Temperature_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Target_Temperature_high_C - Fetch the higher target temperature reported by Nest in Celcius
+
+ Retrieves the high target temperature reported by the Nest in Celcius
+
+   $Nest->fetch_Target_Temperature_high_C();
+
+   This method accepts no parameters
+ 
+ Returns the high target temperature in Celcius
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Target_Temperature_high_C {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_high_c'};
+    } else {
+      print "Nest->fetch_Target_Temperature_high_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Target_Temperature_low_C - Fetch the lower target temperature reported by Nest in Celcius
+
+ Retrieves the lower target temperature reported by the Nest in Celcius
+
+   $Nest->fetch_Target_Temperature_low_C();
+
+   This method accepts no parameters
+ 
+ Returns the lower target temperature in Celcius
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Target_Temperature_low_C {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_low_c'};
+    } else {
+      print "Nest->fetch_Target_Temperature_low_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Away_Temperature_low_C - Fetch the lower away temperature reported by Nest in Celcius
+
+ Retrieves the lower away temperature reported by the Nest in Celcius
+
+   $Nest->fetch_Away_Temperature_low_C();
+
+   This method accepts no parameters
+ 
+ Returns the lower away temperature in Celcius
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Away_Temperature_low_C {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_low_c'};
+    } else {
+      print "Nest->fetch_Away_Temperature_low_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Away_Temperature_high_C - Fetch the high away temperature reported by Nest in Celcius
+
+ Retrieves the high away temperature reported by the Nest in Celcius
+
+   $Nest->fetch_Away_Temperature_high_C();
+
+   This method accepts no parameters
+ 
+ Returns the high away temperature in Celcius
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Away_Temperature_high_C {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_high_c'};
+    } else {
+      print "Nest->fetch_Away_Temperature_high_C(): Response from server is not valid\n";
       print "  \"".$response->content."\"\n\n";
       return 0;
     }
@@ -279,10 +458,184 @@ sub fetch_Ambient_Temperature_F {
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
-      my $temperature = $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_f'};
-      return $temperature;
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_f'};
     } else {
-      print "Nest->fetch_Ambient_Temperature_Celsius(): Response from server is not valid\n";
+      print "Nest->fetch_Ambient_Temperature_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Away_Temperature_low_F - Fetch the lower away temperature reported by Nest in Fahrenheit
+
+ Retrieves the lower away temperature reported by the Nest in Fahrenheit
+
+   $Nest->fetch_Away_Temperature_low_F();
+
+   This method accepts no parameters
+ 
+ Returns the lower away temperature in Fahrenheit
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Away_Temperature_low_F {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_low_f'};
+    } else {
+      print "Nest->fetch_Away_Temperature_low_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Away_Temperature_high_F - Fetch the higher away temperature reported by Nest in Fahrenheit
+
+ Retrieves the higher away temperature reported by the Nest in Fahrenheit
+
+   $Nest->fetch_Away_Temperature_high_F();
+
+   This method accepts no parameters
+ 
+ Returns the higher away temperature in Fahrenheit
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Away_Temperature_high_F {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_high_f'};
+    } else {
+      print "Nest->fetch_Away_Temperature_high_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Target_Temperature_low_F - Fetch the lower target temperature reported by Nest in Fahrenheit
+
+ Retrieves the lower target temperature reported by the Nest in Fahrenheit
+
+   $Nest->fetch_Target_Temperature_low_F();
+
+   This method accepts no parameters
+ 
+ Returns the lower target temperature in Fahrenheit
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Target_Temperature_low_F {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_low_f'};
+    } else {
+      print "Nest->fetch_Target_Temperature_low_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Target_Temperature_F - Fetch the target temperature reported by Nest in Fahrenheit
+
+ Retrieves the target temperature reported by the Nest in Fahrenheit
+
+   $Nest->fetch_Target_Temperature_F();
+
+   This method accepts no parameters
+ 
+ Returns the target temperature in Fahrenheit
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Target_Temperature_F {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_f'};
+    } else {
+      print "Nest->fetch_Target_Temperature_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Target_Temperature_high_F - Fetch the higher target temperature reported by Nest in Fahrenheit
+
+ Retrieves the higher target temperature reported by the Nest in Fahrenheit
+
+   $Nest->fetch_Target_Temperature_high_F();
+
+   This method accepts no parameters
+ 
+ Returns the target temperature in Fahrenheit
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Target_Temperature_high_F {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_high_f'};
+    } else {
+      print "Nest->fetch_Target_Temperature_high_F(): Response from server is not valid\n";
       print "  \"".$response->content."\"\n\n";
       return 0;
     }
@@ -316,10 +669,188 @@ sub fetch_Temperature_Scale {
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
-      my $scale = $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'temperature_scale'};
-      return $scale;
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'temperature_scale'};
     } else {
-      print "Nest->fetch_Ambient_Temperature(): Response from server is not valid\n";
+      print "Nest->fetch_Temperature_Scale(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Locale - Fetch the locale reported by Nest
+
+ Retrieves the locale reported by the Nest 
+
+   $Nest->fetch_Locale();
+
+   This method accepts no parameters
+ 
+ Returns the locale
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Locale {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'locale'};
+    } else {
+      print "Nest->fetch_Locale(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Name - Fetch the name reported by Nest
+
+ Retrieves the name reported by the Nest 
+
+   $Nest->fetch_Name();
+
+   This method accepts no parameters
+ 
+ Returns the name of the thermostat
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Name {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'name'};
+    } else {
+      print "Nest->fetch_Name(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Long_Name - Fetch the long name reported by Nest
+
+ Retrieves the long name reported by the Nest 
+
+   $Nest->fetch_Long_Name();
+
+   This method accepts no parameters
+ 
+ Returns the long name of the thermostat
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Long_Name {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'name_long'};
+    } else {
+      print "Nest->fetch_Long_Name(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_HVAC_Mode - Fetch the HVAC Mode reported by Nest
+
+ Retrieves the HVAC Mode reported by the Nest as either 'heat' or 'cool'
+
+   $Nest->fetch_HVAC_Mode();
+
+   This method accepts no parameters
+ 
+ Returns the HVAC mode
+ Returns 0 on failure
+ 
+=cut
+sub fetch_HVAC_Mode {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'hvac_mode'};
+    } else {
+      print "Nest->fetch_HVAC_Mode(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_SW_Version - Fetch the software version reported by Nest
+
+ Retrieves the software version reported by the Nest
+
+   $Nest->fetch_SW_Version();
+
+   This method accepts no parameters
+ 
+ Returns the software version
+ Returns 0 on failure
+ 
+=cut
+sub fetch_SW_Version {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'software_version'};
+    } else {
+      print "Nest->fetch_SW_Version(): Response from server is not valid\n";
       print "  \"".$response->content."\"\n\n";
       return 0;
     }

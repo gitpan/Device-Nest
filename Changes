@@ -7,3 +7,7 @@ Revision history for Perl extension Device::Nest.
     - added methods to fetch ambient temp in F and C
     - added method to fetch thermostat designation
     - added more detailed documentation
+0.03  Jul 13 2014
+    - added functions to fetch all remaining parameters
+    
+    
