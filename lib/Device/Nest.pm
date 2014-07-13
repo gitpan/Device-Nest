@@ -11,15 +11,15 @@ our @ISA = qw(Exporter);
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration	use Device::NeurioTools ':all';
+# This allows declaration	use Device::Nest ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
+
 our %EXPORT_TAGS = ( 'all' => [ qw(
     new connect
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
 our @EXPORT = qw( $EXPORT_TAGS{'all'});
 
 BEGIN
@@ -27,12 +27,10 @@ BEGIN
   if ($^O eq "MSWin32"){
     use LWP::UserAgent;
     use JSON qw(decode_json);
-    use MIME::Base64 (qw(encode_base64));
     use Data::Dumper;
   } else {
     use LWP::UserAgent;
     use JSON qw(decode_json);
-    use MIME::Base64 (qw(encode_base64));
     use Data::Dumper;
   }
 }
@@ -41,15 +39,15 @@ BEGIN
 =head1 NAME
 
 Device::Nest - Methods for wrapping the Nest API calls so that they are 
-                 accessible via Perl
+               accessible via Perl
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 #*****************************************************************
 
@@ -59,21 +57,38 @@ our $VERSION = '0.01';
  methods:
    - new
    - connect
+   - fetch_Ambient_Temperature
+   - fetch_Designation
 
- Please note that in order to use this module you will require two parameters
- ($ClientID,$ClientSecret) as well as a Nest Thermostat installed in your house.
+ In order to use this module, you will require a Nest thermostat installed in 
+ your home as well.  You will also need your ClientID and ClientSecret provided
+ by Nest when you register as a developper at https://developer.nest.com.  
+ You will aos need an access code which can be obtained at 
+ https://home.nest.com/login/oauth2?client_id=CLIENT_ID&state=FOO
+ Your authorization code will be obtained and stored in this module when you
+ call it.
 
  The module is written entirely in Perl and has been developped on Raspbian Linux.
 
 =head1 SAMPLE CODE
 
-    use Device::Neurio;
+    use Device::Nest;
 
-    $my_Nest = Device::Nest->new($ClientID,$ClientSecret);
+    $my_Nest = Device::Nest->new($ClientID,$ClientSecret,$code,$phrase);
 
     $my_Nest->connect();
   
     undef $my_Nest;
+
+
+ You need to get an authorization code by going to https://home.nest.com/login/oauth2?client_id=CLIENT_ID&state=FOO
+ and specifying your client ID in the URL along with a random string for state
+ 
+ Use this code, along with your ClientID and ClientSecret to get an authorization code
+ by using the 'connect' function below.  
+ 
+ From now on, all you need is your auth_token
+ 
 
 
 =head2 EXPORT
@@ -83,32 +98,33 @@ our $VERSION = '0.01';
 
 =head1 SUBROUTINES/METHODS
 
-=head2 new - the constructor for a Neurio object
+=head2 new - the constructor for a Nest object
 
- Creates a new instance which will be able to fetch data from a unique Neurio 
+ Creates a new instance which will be able to fetch data from a unique Nest 
  sensor.
 
- my $Nest = Device::Nest->new($key,$secret,$sensor_id);
+ my $Nest = Device::Nest->new($ClientID,$ClientSecret,$phrase);
 
    This method accepts the following parameters:
-     - $key       : unique key for the account - Required 
-     - $secret    : secret key for the account - Required
-     - $sensor_id : sensor ID connected to the account - Required 
+     - $ClientID     : Client ID for the account - Required 
+     - $ClientSecret : Secret key for the account - Required
+     - $auth_token   : authentication token to access the account - Required 
 
- Returns a Neurio object if successful.
+ Returns a Nest object if successful.
  Returns 0 on failure
 =cut
 sub new {
     my $class = shift;
     my $self;
-
-    $self->{'ua'}           = LWP::UserAgent->new();
-    $self->{'ClientID'}     = shift;
-    $self->{'ClientSecret'} = shift;
-    $self->{'code'}         = shift;
     
-    if ((!defined $self->{'ClientID'}) || (!defined $self->{'ClientSecret'}) || (!defined $self->{'code'})) {
-      print "Nest->new(): ClientID, ClientSecret and code are REQUIRED parameters.\n";
+    $self->{'ua'}            = LWP::UserAgent->new();
+    $self->{'ClientID'}      = shift;
+    $self->{'ClientSecret'}  = shift;
+    $self->{'PIN_code'}      = shift;
+    $self->{'auth_token'}    = shift;
+    
+    if ((!defined $self->{'ClientID'}) || (!defined $self->{'ClientSecret'}) || (!defined $self->{'PIN_code'}) || (!defined $self->{'auth_token'})) {
+      print "Nest->new(): ClientID, ClientSecret, PIN_code and auth_token are REQUIRED parameters.\n";
       return 0;
     }
     
@@ -120,39 +136,48 @@ sub new {
 
 #*****************************************************************
 
-=head2 connect - open a secure connection to the Nest server
+=head2 fetch_Auth_Token - generates and displays the auth_token 
 
- Opens a secure connection via HTTPS to the Nest server which provides
- access to a set of API commands to access the thermostat data.
+ This function will display the authenticaton token for the PIN code
+ provided.  This can only be done once per PIN code.  Pleas make sure
+ to note and store your auth code since it will be the only thing requiired
+ for all other API calls.
 
-   $Nest->connect();
+   $Nest->fetch_Auth_Token();
  
  This method accepts no parameters
  
- Returns 1 on success 
+ Returns 1 on success and prints auth_token
  Returns 0 on failure
 =cut
-sub connect {
-	my $self         = shift;
-	my $access_token = '';
+sub fetch_Auth_Token {
+	my $self       = shift;
+	my $auth_token = '';
 	
     # Submit request for authentiaction token.
     my $response = $self->{'ua'}->post('https://api.home.nest.com/oauth2/access_token',
-          { code          => $self->{'code'},
+          { code          => $self->{'PIN_code'},
         	grant_type    => 'authorization_code', 
         	client_id     => $self->{'ClientID'},
         	client_secret => $self->{'ClientSecret'},
           }
         );
-        
+    
     if($response->is_success) {
-      my $return = $response->content;
-      $return =~ /\"access_token\":\"(.*)\"/;
-      $self->{'access_token'} = $1;
-      return 1;
+      if ($response->content =~ /\"access_token\":\"(.*?)\"/) {
+      	print "Found authentication code.  Please use it when calling functions\n";
+      	print "Authentication code: $1\n";
+      	return 1;
+      } else {
+        print "No authentication token found.\n";
+        print "Make sure your PIN is correct.\n";
+        print "You may need to request a new PIN\n";
+        return 0;
+      }
     } else {
-      print "Nest->connect(): Failed to connect.\n";
-      print $response->content."\n\n";
+      print "No authentication token found.\n";
+      print "Make sure your PIN is correct.\n";
+      print "You may need to request a new PIN\n";
       return 0;
     }
 }
@@ -160,37 +185,146 @@ sub connect {
 
 #*****************************************************************
 
-=head2 fetch_Temperature - Fetch the current temperature reported by Nest
+=head2 fetch_Thermostat_Designation - fetch the designation for your thermostat
 
- Retrieves the current temperature reported by the Nest.
+ Retrieves the code designating your thermostat and stores it in $self
 
-   $Nest->fetch_Temperature();
+   $Nest->fetch_Thermostat_Designation();
 
    This method accepts no parameters
  
- Returns a Perl data structure on success:
+ Returns 1 on success
  Returns 0 on failure
  
 =cut
-sub fetch_Temperature {
-    my $self = shift;
-    my ($url,$response,$decoded_response);
-    
-    $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'access_token'};
-	$response = $self->{'ua'}->get($url,"Authorization"=>"Bearer ".$self->{'access_token'});
-    
-    print Dumper($response);
+sub fetch_Thermostat_Designation {
+    my $self     = shift;
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
     
     if ($response->is_success) {
-      $decoded_response = decode_json($response->content);
+      my $decoded_response  = decode_json($response->content);
+      my $designation       = ($decoded_response->{'thermostats'});
+      my @designation2      = keys(%$designation);
+      $self->{'thermostat'} = $designation2[0];
+      return 1;
     } else {
-      print "Neurio->fetch_Last_Live(): Response from server is not valid\n";
+      print "Nest->fetch_Deisgnation(): Response from server is not valid\n";
       print "  \"".$response->content."\"\n\n";
-      $decoded_response = 0;
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Ambient_Temperature_C - Fetch the ambient temperature reported by Nest in Celcius
+
+ Retrieves the ambient temperature reported by the Nest in Celcius
+
+   $Nest->fetch_Ambient_Temperature_C();
+
+   This method accepts no parameters
+ 
+ Returns the ambient temperature in Celcius
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Ambient_Temperature_C {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
     }
     
-    return $decoded_response;
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      my $temperature = $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_c'};
+      return $temperature;
+    } else {
+      print "Nest->fetch_Ambient_Temperature_Celsius(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
 }
+
+#*****************************************************************
+
+=head2 fetch_Ambient_Temperature_F - Fetch the ambient temperature reported by Nest in Fahrenheit
+
+ Retrieves the ambient temperature reported by the Nest in Fahrenheit
+
+   $Nest->fetch_Ambient_Temperature_F();
+
+   This method accepts no parameters
+ 
+ Returns the ambient temperature in Fahrenheit
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Ambient_Temperature_F {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      my $temperature = $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_f'};
+      return $temperature;
+    } else {
+      print "Nest->fetch_Ambient_Temperature_Celsius(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+=head2 fetch_Temperature_Scale - Fetch the temperature scale reported by Nest
+
+ Retrieves the temperature scale reported by the Nest as either F (Fahrenheit)
+ or C (Celcius)
+
+   $Nest->fetch_Temperature_Scale();
+
+   This method accepts no parameters
+ 
+ Returns the temperature scale
+ Returns 0 on failure
+ 
+=cut
+sub fetch_Temperature_Scale {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    
+    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	my $response = $self->{'ua'}->get($url);
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      my $scale = $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'temperature_scale'};
+      return $scale;
+    } else {
+      print "Nest->fetch_Ambient_Temperature(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
 
 #*****************************************************************
 
