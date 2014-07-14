@@ -9,5 +9,7 @@ Revision history for Perl extension Device::Nest.
     - added more detailed documentation
 0.03  Jul 13 2014
     - added functions to fetch all remaining parameters
+0.04  Jul 14 2014
+    - added functions to set target temperatures
     
     

@@ -16,12 +16,15 @@ our @ISA = qw(Exporter);
 # will save memory.
 
 our %EXPORT_TAGS = ( 'all' => [ qw(
-    new fetch_Auth_Token fetch_Thermostat_Designation fetch_Ambient_Temperature_C 
-    fetch_Target_Temperature_C fetch_Target_Temperature_high_C fetch_Target_Temperature_low_C 
-    fetch_Away_Temperature_low_C fetch_Ambient_Temperature_F fetch_Away_Temperature_low_F 
-    fetch_Away_Temperature_high_F fetch_Target_Temperature_low_F fetch_Target_Temperature_F 
-    fetch_Target_Temperature_high_F fetch_Temperature_Scale fetch_Locale fetch_Name 
+    new fetch_Auth_Token            fetch_Thermostat_Designation    fetch_Ambient_Temperature_C 
+    fetch_Target_Temperature_C      fetch_Target_Temperature_high_C fetch_Target_Temperature_low_C 
+    fetch_Away_Temperature_low_C    fetch_Ambient_Temperature_F     fetch_Away_Temperature_low_F 
+    fetch_Away_Temperature_high_F   fetch_Target_Temperature_low_F  fetch_Target_Temperature_F 
+    fetch_Target_Temperature_high_F fetch_Temperature_Scale         fetch_Locale fetch_Name 
     fetch_Long_Name fetch_HVAC_Mode fetch_SW_Version
+    set_Target_Temperature_C        set_Target_Temperature_F        set_Target_Temperature_high_C
+    set_Target_Temperature_low_C    set_Target_Temperature_high_F   set_Target_Temperature_low_F
+    
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -48,11 +51,11 @@ Device::Nest - Methods for wrapping the Nest API calls so that they are
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 #*****************************************************************
 
@@ -122,11 +125,12 @@ sub new {
     my $class = shift;
     my $self;
     
-    $self->{'ua'}            = LWP::UserAgent->new();
+    $self->{'ua'}            = LWP::UserAgent->new(max_redirect=>1,requests_redirectable=>['GET','HEAD','PUT']);
     $self->{'ClientID'}      = shift;
     $self->{'ClientSecret'}  = shift;
     $self->{'PIN_code'}      = shift;
     $self->{'auth_token'}    = shift;
+    $self->{'device_url'}    ="https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
     
     if ((!defined $self->{'ClientID'}) || (!defined $self->{'ClientSecret'}) || (!defined $self->{'PIN_code'}) || (!defined $self->{'auth_token'})) {
       print "Nest->new(): ClientID, ClientSecret, PIN_code and auth_token are REQUIRED parameters.\n";
@@ -204,8 +208,7 @@ sub fetch_Auth_Token {
 =cut
 sub fetch_Thermostat_Designation {
     my $self     = shift;
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response  = decode_json($response->content);
@@ -243,8 +246,7 @@ sub fetch_Ambient_Temperature_C {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -278,8 +280,7 @@ sub fetch_Target_Temperature_C {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -313,8 +314,7 @@ sub fetch_Target_Temperature_high_C {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -348,8 +348,7 @@ sub fetch_Target_Temperature_low_C {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -383,8 +382,7 @@ sub fetch_Away_Temperature_low_C {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -418,8 +416,7 @@ sub fetch_Away_Temperature_high_C {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -453,8 +450,7 @@ sub fetch_Ambient_Temperature_F {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -488,8 +484,7 @@ sub fetch_Away_Temperature_low_F {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -523,8 +518,7 @@ sub fetch_Away_Temperature_high_F {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -558,8 +552,7 @@ sub fetch_Target_Temperature_low_F {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -593,8 +586,7 @@ sub fetch_Target_Temperature_F {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -628,8 +620,7 @@ sub fetch_Target_Temperature_high_F {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -664,8 +655,7 @@ sub fetch_Temperature_Scale {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -700,8 +690,7 @@ sub fetch_Locale {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -735,8 +724,7 @@ sub fetch_Name {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -771,8 +759,7 @@ sub fetch_Long_Name {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -807,8 +794,7 @@ sub fetch_HVAC_Mode {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
@@ -843,14 +829,265 @@ sub fetch_SW_Version {
       return 0;
     }
     
-    my $url      = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
-	my $response = $self->{'ua'}->get($url);
+	my $response = $self->{'ua'}->get($self->{'device_url'});
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
       return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'software_version'};
     } else {
       print "Nest->fetch_SW_Version(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 set_Target_Temperature_C - Set the target temperature in Celcius
+
+ Set the target temperature in Celcius
+
+   $Nest->set_Target_Temperature_C($temperature);
+
+   This method accepts the following parameters:
+     - $temperature : target temperature in Celcius - Required 
+ 
+ Returns 1 on success
+ Returns 0 on failure
+ 
+=cut
+sub set_Target_Temperature_C {
+    my $self        = shift;
+    my $temperature = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    if (!defined $temperature) {
+      print "Temperature is a required perameter\n";
+      return 0;
+    }
+    
+	my $response = $self->{'ua'}->put("https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'}."/target_temperature_c?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $temperature );
+    
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "Nest->set_Target_Temperature_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 set_Target_Temperature_high_C - Set the high target temperature in Celcius
+
+ Set the high target temperature in Celcius
+
+   $Nest->set_Target_Temperature_high_C($temperature);
+
+   This method accepts the following parameters:
+     - $temperature : high target temperature in Celcius - Required 
+ 
+ Returns 1 on success
+ Returns 0 on failure
+ 
+=cut
+sub set_Target_Temperature_high_C {
+    my $self        = shift;
+    my $temperature = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    if (!defined $temperature) {
+      print "Temperature is a required perameter\n";
+      return 0;
+    }
+    
+	my $response = $self->{'ua'}->put("https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'}."/target_temperature_high_c?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $temperature );
+    
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "Nest->set_Target_Temperature_high_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 set_Target_Temperature_low_C - Set the low target temperature in Celcius
+
+ Set the low target temperature in Celcius
+
+   $Nest->set_Target_Temperature_low_C($temperature);
+
+   This method accepts the following parameters:
+     - $temperature : low target temperature in Celcius - Required 
+ 
+ Returns 1 on success
+ Returns 0 on failure
+ 
+=cut
+sub set_Target_Temperature_low_C {
+    my $self        = shift;
+    my $temperature = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    if (!defined $temperature) {
+      print "Temperature is a required perameter\n";
+      return 0;
+    }
+    
+	my $response = $self->{'ua'}->put("https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'}."/target_temperature_low_c?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $temperature );
+    
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "Nest->set_Target_Temperature_low_C(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 set_Target_Temperature_F - Set the target temperature in Fahrenheit
+
+ Set the target temperature in Fahrenheit
+
+   $Nest->set_Target_Temperature_F($temperature);
+
+   This method accepts the following parameters:
+     - $temperature : target temperature in Fahrenheit - Required 
+ 
+ Returns 1 on success
+ Returns 0 on failure
+ 
+=cut
+sub set_Target_Temperature_F {
+    my $self        = shift;
+    my $temperature = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    if (!defined $temperature) {
+      print "Temperature is a required perameter\n";
+      return 0;
+    }
+    
+	my $response = $self->{'ua'}->put("https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'}."/target_temperature_F?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $temperature );
+    
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "Nest->set_Target_Temperature_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 set_Target_Temperature_high_F - Set the high target temperature in Fahrenheit
+
+ Set the high target temperature in Fahrenheit
+
+   $Nest->set_Target_Temperature_high_F($temperature);
+
+   This method accepts the following parameters:
+     - $temperature : high target temperature in Fahrenheit - Required 
+ 
+ Returns 1 on success
+ Returns 0 on failure
+ 
+=cut
+sub set_Target_Temperature_high_F {
+    my $self        = shift;
+    my $temperature = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    if (!defined $temperature) {
+      print "Temperature is a required perameter\n";
+      return 0;
+    }
+    
+	my $response = $self->{'ua'}->put("https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'}."/target_temperature_high_f?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $temperature );
+    
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "Nest->set_Target_Temperature_high_F(): Response from server is not valid\n";
+      print "  \"".$response->content."\"\n\n";
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 set_Target_Temperature_low_F - Set the low target temperature in Fahrenheit
+
+ Set the low target temperature in Fahrenheit
+
+   $Nest->set_Target_Temperature_low_F($temperature);
+
+   This method accepts the following parameters:
+     - $temperature : low target temperature in Fahrenheit - Required 
+ Fahrenheit
+ Returns 1 on success
+ Returns 0 on failure
+ 
+=cut
+sub set_Target_Temperature_low_F {
+    my $self        = shift;
+    my $temperature = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "No thermostat designation found\n";
+      return 0;
+    }
+    if (!defined $temperature) {
+      print "Temperature is a required perameter\n";
+      return 0;
+    }
+    
+	my $response = $self->{'ua'}->put("https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'}."/target_temperature_low_f?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $temperature );
+    
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "Nest->set_Target_Temperature_low_F(): Response from server is not valid\n";
       print "  \"".$response->content."\"\n\n";
       return 0;
     }
