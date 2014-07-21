@@ -13,5 +13,7 @@ Revision history for Perl extension Device::Nest.
     - added functions to set target temperatures
 0.05  Jul 16 2014
     - added functions to fetch and set "away" state
-    
+0.06  Jul 16 2014
+    - added option for debug printouts
+    - added method to dump contents of $self
     

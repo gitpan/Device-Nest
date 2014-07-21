@@ -16,8 +16,8 @@ our @ISA = qw(Exporter);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 
-our %EXPORT_TAGS = ( 'all' => [ qw(
-    new fetch_Auth_Token            fetch_Thermostat_Designation    fetch_Ambient_Temperature_C 
+our %EXPORT_TAGS = ( 'all' => [ qw( new 
+    fetch_Auth_Token                fetch_Thermostat_Designation    fetch_Ambient_Temperature_C 
     fetch_Target_Temperature_C      fetch_Target_Temperature_high_C fetch_Target_Temperature_low_C 
     fetch_Away_Temperature_low_C    fetch_Ambient_Temperature_F     fetch_Away_Temperature_low_F 
     fetch_Away_Temperature_high_F   fetch_Target_Temperature_low_F  fetch_Target_Temperature_F 
@@ -27,11 +27,10 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
     set_Target_Temperature_C        set_Target_Temperature_F        set_Target_Temperature_high_C
     set_Target_Temperature_low_C    set_Target_Temperature_high_F   set_Target_Temperature_low_F
     set_Away_State
-    
-) ] );
+    ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-our @EXPORT = qw( $EXPORT_TAGS{'all'});
+our @EXPORT    = qw( $EXPORT_TAGS{'all'});
 
 BEGIN
 {
@@ -54,11 +53,11 @@ Device::Nest - Methods for wrapping the Nest API calls so that they are
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 #*****************************************************************
 
@@ -85,7 +84,7 @@ our $VERSION = '0.05';
 
     use Device::Nest;
 
-    $my_Nest = Device::Nest->new($ClientID,$ClientSecret,$code,$phrase);
+    $my_Nest = Device::Nest->new($ClientID,$ClientSecret,$code,$phrase,$debug);
 
     $my_Nest->connect();
   
@@ -114,12 +113,13 @@ our $VERSION = '0.05';
  Creates a new instance which will be able to fetch data from a unique Nest 
  sensor.
 
- my $Nest = Device::Nest->new($ClientID,$ClientSecret,$phrase);
+ my $Nest = Device::Nest->new($ClientID, $ClientSecret, $phrase, $debug);
 
    This method accepts the following parameters:
      - $ClientID     : Client ID for the account - Required 
      - $ClientSecret : Secret key for the account - Required
      - $auth_token   : authentication token to access the account - Required 
+     - $debug        : enable or disable debug messages (disabled by default - Optional)
 
  Returns a Nest object if successful.
  Returns 0 on failure
@@ -129,11 +129,16 @@ sub new {
     my $self;
     
     $self->{'ua'}             = LWP::UserAgent->new(max_redirect=>3,requests_redirectable=>['GET','HEAD','PUT']);
+    $self->{'device_url'}     = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
     $self->{'ClientID'}       = shift;
     $self->{'ClientSecret'}   = shift;
     $self->{'PIN_code'}       = shift;
     $self->{'auth_token'}     = shift;
-    $self->{'device_url'}     = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+    $self->{'debug'}          = shift;
+    
+    if (!defined $self->{'debug'}) {
+      $self->{'debug'} = 0;
+    }
     
     if ((!defined $self->{'ClientID'}) || (!defined $self->{'ClientSecret'}) || (!defined $self->{'PIN_code'}) || (!defined $self->{'auth_token'})) {
       print "Nest->new(): ClientID, ClientSecret, PIN_code and auth_token are REQUIRED parameters.\n";
@@ -219,15 +224,15 @@ sub fetch_Thermostat_Designation {
       my @designation2          = keys(%$designation);
       $self->{'thermostat'}     = $designation2[0];
       $self->{'thermostat_url'} = "https://developer-api.nest.com/devices/thermostats/".$self->{'thermostat'};
-      print "Thermostat designation: ".$self->{'thermostat'}."\n";
-      
+      print "Thermostat designation: ".$self->{'thermostat'}."\n" if ($self->{'debug'});
+
       my $response = $self->{'ua'}->get("https://developer-api.nest.com/structures?auth=".$self->{'auth_token'});
       if ($response->is_success) {
         my $decoded_response  = decode_json($response->content);
         my @designation       = keys(%$decoded_response);        
         $self->{'structure'}  = $designation[0];
         $self->{'struct_url'} = "https://developer-api.nest.com/structures/".$self->{'structure'}."?auth=".$self->{'auth_token'};
-        print "Structure Designation: ".$self->{'structure'}."\n";
+        print "Structure Designation: ".$self->{'structure'}."\n" if ($self->{'debug'});
         return 1;
       } else {
         print "Nest->fetch_Thermostat_Designation(): Response from server for structure URL is not valid\n";
@@ -260,7 +265,7 @@ sub fetch_Ambient_Temperature_C {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Ambient_Temperature_C(): No thermostat designation found\n";
       return 0;
     }
     
@@ -294,7 +299,7 @@ sub fetch_Target_Temperature_C {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Target_Temperature_C(): No thermostat designation found\n";
       return 0;
     }
     
@@ -328,7 +333,7 @@ sub fetch_Target_Temperature_high_C {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Target_Temperature_high_C(): No thermostat designation found\n";
       return 0;
     }
     
@@ -362,7 +367,7 @@ sub fetch_Target_Temperature_low_C {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Target_Temperature_low_C(): No thermostat designation found\n";
       return 0;
     }
     
@@ -396,7 +401,7 @@ sub fetch_Away_Temperature_low_C {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Away_Temperature_low_C(): No thermostat designation found\n";
       return 0;
     }
     
@@ -430,7 +435,7 @@ sub fetch_Away_Temperature_high_C {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Away_Temperature_high_C(): No thermostat designation found\n";
       return 0;
     }
     
@@ -464,7 +469,7 @@ sub fetch_Ambient_Temperature_F {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Ambient_Temperature_F(): No thermostat designation found\n";
       return 0;
     }
     
@@ -498,7 +503,7 @@ sub fetch_Away_Temperature_low_F {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Away_Temperature_low_F(): No thermostat designation found\n";
       return 0;
     }
     
@@ -532,7 +537,7 @@ sub fetch_Away_Temperature_high_F {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Away_Temperature_high_F(): No thermostat designation found\n";
       return 0;
     }
     
@@ -566,7 +571,7 @@ sub fetch_Target_Temperature_low_F {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Target_Temperature_low_F(): No thermostat designation found\n";
       return 0;
     }
     
@@ -600,7 +605,7 @@ sub fetch_Target_Temperature_F {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Target_Temperature_F(): No thermostat designation found\n";
       return 0;
     }
     
@@ -634,7 +639,7 @@ sub fetch_Target_Temperature_high_F {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Target_Temperature_high_F(): No thermostat designation found\n";
       return 0;
     }
     
@@ -669,7 +674,7 @@ sub fetch_Temperature_Scale {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Temperature_Scale(): No thermostat designation found\n";
       return 0;
     }
     
@@ -704,7 +709,7 @@ sub fetch_Temperature_Scale {
 #    my $self = shift;
 #    
 #    if (!defined $self->{'thermostat'}) {
-#      print "No thermostat designation found\n";
+#      print "Nest->fetch_Relative_Humidity(): No thermostat designation found\n";
 #      return 0;
 #    }
 #    
@@ -739,7 +744,7 @@ sub fetch_Away_State {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Away_State(): No thermostat designation found\n";
       return 0;
     }
     
@@ -773,7 +778,7 @@ sub fetch_Country_Code {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Country_Code(): No thermostat designation found\n";
       return 0;
     }
     
@@ -808,7 +813,7 @@ sub fetch_Locale {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Locale(): No thermostat designation found\n";
       return 0;
     }
     
@@ -842,7 +847,7 @@ sub fetch_Name {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Name(): No thermostat designation found\n";
       return 0;
     }
     
@@ -877,7 +882,7 @@ sub fetch_Long_Name {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_Long_Name(): No thermostat designation found\n";
       return 0;
     }
     
@@ -912,7 +917,7 @@ sub fetch_HVAC_Mode {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_HVAC_Mode(): No thermostat designation found\n";
       return 0;
     }
     
@@ -947,7 +952,7 @@ sub fetch_SW_Version {
     my $self = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->fetch_SW_Version(): No thermostat designation found\n";
       return 0;
     }
     
@@ -984,11 +989,11 @@ sub set_Target_Temperature_C {
     my $temperature = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Target_Temperature_C(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $temperature) {
-      print "Temperature is a required perameter\n";
+      print "Nest->set_Target_Temperature_C(): Temperature is a required perameter\n";
       return 0;
     }
     
@@ -1026,11 +1031,11 @@ sub set_Target_Temperature_high_C {
     my $temperature = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Target_Temperature_high_C(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $temperature) {
-      print "Temperature is a required perameter\n";
+      print "Nest->set_Target_Temperature_high_C(): Temperature is a required perameter\n";
       return 0;
     }
     
@@ -1068,11 +1073,11 @@ sub set_Target_Temperature_low_C {
     my $temperature = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Target_Temperature_low_C(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $temperature) {
-      print "Temperature is a required perameter\n";
+      print "Nest->set_Target_Temperature_low_C(): Temperature is a required perameter\n";
       return 0;
     }
     
@@ -1110,11 +1115,11 @@ sub set_Target_Temperature_F {
     my $temperature = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Target_Temperature_F(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $temperature) {
-      print "Temperature is a required perameter\n";
+      print "Nest->set_Target_Temperature_F(): Temperature is a required perameter\n";
       return 0;
     }
     
@@ -1152,11 +1157,11 @@ sub set_Target_Temperature_high_F {
     my $temperature = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Target_Temperature_high_F(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $temperature) {
-      print "Temperature is a required perameter\n";
+      print "Nest->set_Target_Temperature_high_F(): Temperature is a required perameter\n";
       return 0;
     }
     
@@ -1194,11 +1199,11 @@ sub set_Target_Temperature_low_F {
     my $temperature = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Target_Temperature_low_F(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $temperature) {
-      print "Temperature is a required perameter\n";
+      print "Nest->set_Target_Temperature_low_F(): Temperature is a required perameter\n";
       return 0;
     }
     
@@ -1236,11 +1241,11 @@ sub set_Away_State {
     my $state = shift;
     
     if (!defined $self->{'thermostat'}) {
-      print "No thermostat designation found\n";
+      print "Nest->set_Away_State(): No thermostat designation found\n";
       return 0;
     }
     if (!defined $state) {
-      print "State is a required perameter\n";
+      print "Nest->set_Away_State(): State is a required perameter\n";
       return 0;
     }
     
@@ -1279,11 +1284,11 @@ sub set_Away_State {
 #    my $scale = shift;
 #    
 #    if (!defined $self->{'thermostat'}) {
-#      print "No thermostat designation found\n";
+#      print "Nest->set_Temperature_Scale(): No thermostat designation found\n";
 #      return 0;
 #    }
 #    if (!defined $scale) {
-#      print "Scale is a required perameter\n";
+#      print "Nest->set_Temperature_Scale(): Scale is a required perameter\n";
 #      return 0;
 #    }
 #    
@@ -1300,6 +1305,38 @@ sub set_Away_State {
 #    }
 #}
 #
+
+
+#*****************************************************************
+
+=head2 dump_Object - shows the contents of the local Neurio object
+
+ shows the contents of the local Neurio object in human readable form
+
+   $Nest->dump_Object();
+
+   This method accepts no parameters
+ 
+ Returns nothing 
+ 
+=cut
+sub dump_Object {
+    my $self  = shift;
+    
+    print "ClientID       : ".substr($self->{'ClientID'},      0,120)."\n";
+    print "ClientSecret   : ".substr($self->{'ClientSecret'},  0,120)."\n";
+    print "auth_token     : ".substr($self->{'auth_token'},    0,120)."\n";
+    print "PIN_code       : ".substr($self->{'PIN_code'},      0,120)."\n";
+    print "device_url     : ".substr($self->{'device_url'},    0,120)."\n";
+    print "struct_url     : ".substr($self->{'struct_url'},    0,120)."\n";
+    print "structure      : ".substr($self->{'structure'},     0,120)."\n";
+    print "thermostat_url : ".substr($self->{'thermostat_url'},0,120)."\n";
+    print "thermostat     : ".substr($self->{'thermostat'},    0,120)."\n";
+    print "Debug enabled  : ".substr($self->{'debug'},         0,120)."\n";
+    print "\n";
+}
+
+
 
 #*****************************************************************
 
