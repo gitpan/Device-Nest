@@ -16,4 +16,8 @@ Revision history for Perl extension Device::Nest.
 0.06  Jul 16 2014
     - added option for debug printouts
     - added method to dump contents of $self
+0.07  July 24, 2014
+    - Added decoding of the HTTP code and reason for most recent request
+    - Added functions to fetch last code and last reason
+    - Moved common code to __process_get and __process_set
     

@@ -53,11 +53,11 @@ Device::Nest - Methods for wrapping the Nest API calls so that they are
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 #*****************************************************************
 
@@ -129,12 +129,14 @@ sub new {
     my $self;
     
     $self->{'ua'}             = LWP::UserAgent->new(max_redirect=>3,requests_redirectable=>['GET','HEAD','PUT']);
-    $self->{'device_url'}     = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
     $self->{'ClientID'}       = shift;
     $self->{'ClientSecret'}   = shift;
     $self->{'PIN_code'}       = shift;
     $self->{'auth_token'}     = shift;
     $self->{'debug'}          = shift;
+    $self->{'last_code'}      = '';
+    $self->{'last_reason'}    = '';
+    $self->{'device_url'}     = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
     
     if (!defined $self->{'debug'}) {
       $self->{'debug'} = 0;
@@ -180,6 +182,8 @@ sub fetch_Auth_Token {
           }
         );
     
+    $self->{'last_code'}   = $response->code;
+    
     if($response->is_success) {
       if ($response->content =~ /\"access_token\":\"(.*?)\"/) {
       	print "Found authentication code.  Please use it when calling functions\n";
@@ -218,6 +222,8 @@ sub fetch_Thermostat_Designation {
     my $self     = shift;
 	my $response = $self->{'ua'}->get($self->{'device_url'});
     
+    $self->{'last_code'}   = $response->code;
+    
     if ($response->is_success) {
       my $decoded_response      = decode_json($response->content);
       my $designation           = ($decoded_response->{'thermostats'});
@@ -227,6 +233,9 @@ sub fetch_Thermostat_Designation {
       print "Thermostat designation: ".$self->{'thermostat'}."\n" if ($self->{'debug'});
 
       my $response = $self->{'ua'}->get("https://developer-api.nest.com/structures?auth=".$self->{'auth_token'});
+
+      $self->{'last_code'}   = $response->code;
+    
       if ($response->is_success) {
         my $decoded_response  = decode_json($response->content);
         my @designation       = keys(%$decoded_response);        
@@ -240,8 +249,7 @@ sub fetch_Thermostat_Designation {
         return 0;
       }
     } else {
-      print "Nest->fetch_Thermostat_Designation(): Response from server for device URL is not valid\n";
-      print "  \"".$response->content."\"\n\n";
+      print "Nest->fetch_Thermostat_Designation(): Failed with return code ".$self->get_last_code()."\n";
       return 0;
     }
 }
@@ -268,17 +276,8 @@ sub fetch_Ambient_Temperature_C {
       print "Nest->fetch_Ambient_Temperature_C(): No thermostat designation found\n";
       return 0;
     }
-    
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_c'};
-    } else {
-      print "Nest->fetch_Ambient_Temperature_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+
+    return $self->__process_get($self->{'device_url'},'ambient_temperature_c');
 }
 
 #*****************************************************************
@@ -303,16 +302,7 @@ sub fetch_Target_Temperature_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_c'};
-    } else {
-      print "Nest->fetch_Target_Temperature_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'target_temperature_c');
 }
 
 #*****************************************************************
@@ -337,16 +327,7 @@ sub fetch_Target_Temperature_high_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_high_c'};
-    } else {
-      print "Nest->fetch_Target_Temperature_high_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'target_temperature_high_c');
 }
 
 #*****************************************************************
@@ -371,16 +352,7 @@ sub fetch_Target_Temperature_low_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_low_c'};
-    } else {
-      print "Nest->fetch_Target_Temperature_low_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'target_temperature_low_c');
 }
 
 #*****************************************************************
@@ -405,16 +377,7 @@ sub fetch_Away_Temperature_low_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_low_c'};
-    } else {
-      print "Nest->fetch_Away_Temperature_low_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'away_temperature_low_c');
 }
 
 #*****************************************************************
@@ -439,16 +402,7 @@ sub fetch_Away_Temperature_high_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_high_c'};
-    } else {
-      print "Nest->fetch_Away_Temperature_high_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'away_temperature_high_c');
 }
 
 #*****************************************************************
@@ -473,16 +427,7 @@ sub fetch_Ambient_Temperature_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'ambient_temperature_f'};
-    } else {
-      print "Nest->fetch_Ambient_Temperature_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'ambient_temperature_f');
 }
 
 #*****************************************************************
@@ -507,16 +452,7 @@ sub fetch_Away_Temperature_low_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_low_f'};
-    } else {
-      print "Nest->fetch_Away_Temperature_low_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'away_temperature_low_f');
 }
 
 #*****************************************************************
@@ -541,16 +477,7 @@ sub fetch_Away_Temperature_high_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'away_temperature_high_f'};
-    } else {
-      print "Nest->fetch_Away_Temperature_high_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'away_temperature_high_f');
 }
 
 #*****************************************************************
@@ -575,16 +502,7 @@ sub fetch_Target_Temperature_low_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_low_f'};
-    } else {
-      print "Nest->fetch_Target_Temperature_low_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'target_temperature_low_f');
 }
 
 #*****************************************************************
@@ -609,16 +527,7 @@ sub fetch_Target_Temperature_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_f'};
-    } else {
-      print "Nest->fetch_Target_Temperature_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'target_temperature_f');
 }
 
 #*****************************************************************
@@ -643,16 +552,7 @@ sub fetch_Target_Temperature_high_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'target_temperature_high_f'};
-    } else {
-      print "Nest->fetch_Target_Temperature_high_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'target_temperature_high_f');
 }
 
 #*****************************************************************
@@ -678,16 +578,7 @@ sub fetch_Temperature_Scale {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'temperature_scale'};
-    } else {
-      print "Nest->fetch_Temperature_Scale(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'temperature_scale');
 }
 
 
@@ -713,16 +604,7 @@ sub fetch_Temperature_Scale {
 #      return 0;
 #    }
 #    
-#	my $response = $self->{'ua'}->get($self->{'device_url'});
-#    
-#    if ($response->is_success) {
-#      my $decoded_response = decode_json($response->content);
-#      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'relative_humidity'};
-#    } else {
-#      print "Nest->fetch_Relative_Humidity(): Response from server is not valid\n";
-#      print "  \"".$response->content."\"\n\n";
-#      return 0;
-#    }
+#    return $self->__process_get($self->{'device_url'},'relative_humidity');
 #}
 #
 
@@ -749,12 +631,14 @@ sub fetch_Away_State {
     }
     
 	my $response = $self->{'ua'}->get($self->{'struct_url'});
+
+    $self->{'last_code'}   = $response->code;
+    
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
       return $decoded_response->{'away'};
     } else {
-      print "Nest->fetch_Away_State(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
+      print "Nest->fetch_Away_State(): Failed with return code ".$self->get_last_code()."\n";
       return 0;
     }
 }
@@ -784,12 +668,13 @@ sub fetch_Country_Code {
     
 	my $response = $self->{'ua'}->get($self->{'struct_url'});
     
+    $self->{'last_code'}   = $response->code;
+    
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
       return $decoded_response->{$self->{'structure'}}->{'country_code'};
     } else {
-      print "Nest->fetch_Country_Code(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
+      print "Nest->fetch_Country_Code(): Failed with return code ".$self->get_last_code()."\n";
       return 0;
     }
 }
@@ -817,16 +702,7 @@ sub fetch_Locale {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'locale'};
-    } else {
-      print "Nest->fetch_Locale(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'locale');
 }
 
 #*****************************************************************
@@ -851,16 +727,7 @@ sub fetch_Name {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'name'};
-    } else {
-      print "Nest->fetch_Name(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'name');
 }
 
 
@@ -886,16 +753,7 @@ sub fetch_Long_Name {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'name_long'};
-    } else {
-      print "Nest->fetch_Long_Name(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'name_long');
 }
 
 
@@ -921,16 +779,7 @@ sub fetch_HVAC_Mode {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'hvac_mode'};
-    } else {
-      print "Nest->fetch_HVAC_Mode(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'hvac_mode');
 }
 
 
@@ -956,16 +805,7 @@ sub fetch_SW_Version {
       return 0;
     }
     
-	my $response = $self->{'ua'}->get($self->{'device_url'});
-    
-    if ($response->is_success) {
-      my $decoded_response = decode_json($response->content);
-      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{'software_version'};
-    } else {
-      print "Nest->fetch_SW_Version(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_get($self->{'device_url'},'software_version');
 }
 
 
@@ -996,18 +836,8 @@ sub set_Target_Temperature_C {
       print "Nest->set_Target_Temperature_C(): Temperature is a required perameter\n";
       return 0;
     }
-    
-	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/target_temperature_C?auth=".$self->{'auth_token'}, 
-	         Content_Type => 'application/json',
-             content      => $temperature );
-    
-    if ($response->is_success) {
-      return $response->content;
-    } else {
-      print "Nest->set_Target_Temperature_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+
+    return $self->__process_set($self->{'thermostat_url'},'target_temperature_C',$temperature);
 }
 
 
@@ -1039,17 +869,7 @@ sub set_Target_Temperature_high_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/target_temperature_high_C?auth=".$self->{'auth_token'}, 
-	         Content_Type => 'application/json',
-             content      => $temperature );
-    
-    if ($response->is_success) {
-      return $response->content;
-    } else {
-      print "Nest->set_Target_Temperature_high_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_set($self->{'thermostat_url'},'target_temperature_high_C',$temperature);
 }
 
 
@@ -1081,17 +901,7 @@ sub set_Target_Temperature_low_C {
       return 0;
     }
     
-	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/target_temperature_low_C?auth=".$self->{'auth_token'}, 
-	         Content_Type => 'application/json',
-             content      => $temperature );
-    
-    if ($response->is_success) {
-      return $response->content;
-    } else {
-      print "Nest->set_Target_Temperature_low_C(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_set($self->{'thermostat_url'},'target_temperature_low_C',$temperature);
 }
 
 
@@ -1123,17 +933,7 @@ sub set_Target_Temperature_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/target_temperature_F?auth=".$self->{'auth_token'}, 
-	         Content_Type => 'application/json',
-             content      => $temperature );
-    
-    if ($response->is_success) {
-      return $response->content;
-    } else {
-      print "Nest->set_Target_Temperature_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_set($self->{'thermostat_url'},'target_temperature_F',$temperature);
 }
 
 
@@ -1165,17 +965,7 @@ sub set_Target_Temperature_high_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/target_temperature_high_F?auth=".$self->{'auth_token'}, 
-	         Content_Type => 'application/json',
-             content      => $temperature );
-    
-    if ($response->is_success) {
-      return $response->content;
-    } else {
-      print "Nest->set_Target_Temperature_high_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_set($self->{'thermostat_url'},'target_temperature_high_F',$temperature);
 }
 
 
@@ -1207,17 +997,7 @@ sub set_Target_Temperature_low_F {
       return 0;
     }
     
-	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/target_temperature_low_F?auth=".$self->{'auth_token'}, 
-	         Content_Type => 'application/json',
-             content      => $temperature );
-    
-    if ($response->is_success) {
-      return $response->content;
-    } else {
-      print "Nest->set_Target_Temperature_low_F(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
-      return 0;
-    }
+    return $self->__process_set($self->{'thermostat_url'},'target_temperature_low_F',$temperature);
 }
 
 
@@ -1251,14 +1031,17 @@ sub set_Away_State {
     
     my %state = ('away' => $state);
     my $json  = encode_json(\%state);
+
 	my $response = $self->{'ua'}->put($self->{'struct_url'}, 
 	         Content_Type => 'application/json',
              content      => $json);
+
+    $self->{'last_code'}   = $response->code;
+    
     if ($response->is_success) {
       return $response->content;
     } else {
-      print "Nest->set_Away_State(): Response from server is not valid\n";
-      print "  \"".$response->content."\"\n\n";
+      print "Nest->set_Away_State(): Failed with return code ".$self->get_last_code()."\n";
       return 0;
     }
 }
@@ -1279,6 +1062,7 @@ sub set_Away_State {
 # Returns 0 on failure
 # 
 #=cut
+#
 #sub set_Temperature_Scale {
 #    my $self  = shift;
 #    my $scale = shift;
@@ -1292,17 +1076,7 @@ sub set_Away_State {
 #      return 0;
 #    }
 #    
-#	my $response = $self->{'ua'}->put($self->{'thermostat_url'}."/temperature_scale?auth=".$self->{'auth_token'}, 
-#	         Content_Type => 'application/json',
-#             content      => $scale );
-#    
-#    if ($response->is_success) {
-#      return $response->content;
-#    } else {
-#      print "Nest->set_Temperature_Scale(): Response from server is not valid\n";
-#      print "  \"".$response->content."\"\n\n";
-#      return 0;
-#    }
+#    return $self->__process_set($self->{'thermostat_url'},'temperature_scale');
 #}
 #
 
@@ -1332,10 +1106,92 @@ sub dump_Object {
     print "structure      : ".substr($self->{'structure'},     0,120)."\n";
     print "thermostat_url : ".substr($self->{'thermostat_url'},0,120)."\n";
     print "thermostat     : ".substr($self->{'thermostat'},    0,120)."\n";
-    print "Debug enabled  : ".substr($self->{'debug'},         0,120)."\n";
+    print "debug          : ".substr($self->{'debug'},         0,120)."\n";
+    print "last_code      : ".substr($self->{'last_code'},     0,120)."\n";
+    print "last_reason    : ".substr($self->{'last_reason'},   0,120)."\n";
     print "\n";
 }
 
+
+#*****************************************************************
+
+=head2 get_last_code - returns the code generated by the most recent fetch
+
+ Returns the HTTP Header code for the most recent fetch command
+
+   $Nest->get_last_code();
+
+   This method accepts no parameters
+ 
+ Returns the numeric code
+ 
+=cut
+
+sub get_last_code {
+    my $self  = shift;
+    return $self->{'last_code'};
+}
+
+#*****************************************************************
+
+=head2 get_last_reason - returns the text generated by the most recent fetch
+
+ Returns the HTTP Header reason for the most recent fetch command
+
+   $Nest->get_last_reason();
+
+   This method accepts no parameters
+ 
+ Returns the textual reason
+ 
+=cut
+
+sub get_last_reason {
+    my $self  = shift;
+    return $self->{'last_reason'};
+}
+
+
+#*****************************************************************
+
+sub __process_get {
+    my $self     = shift;
+    my $url      = shift;
+    my $tag      = shift;
+	my $response = $self->{'ua'}->get($url);
+	
+    $self->{'last_code'}   = $response->code;
+    
+    if ($response->is_success) {
+      my $decoded_response = decode_json($response->content);
+      return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{$tag};
+    } else {
+      print "\n".(caller(1))[3]."(): Failed with return code ".$self->get_last_code()."\n";
+      return 0;
+    }
+}
+
+#*****************************************************************
+
+sub __process_set {
+    my $self     = shift;
+    my $url      = shift;
+    my $tag      = shift;
+    my $value    = shift;
+
+	my $response = $self->{'ua'}->put($url."/".$tag."?auth=".$self->{'auth_token'}, 
+	         Content_Type => 'application/json',
+             content      => $value );
+    $self->{'last_code'}   = $response->code;
+    $self->{'last_reason'} = decode_json($response->content)->{'error'};
+
+    if ($response->is_success) {
+      return $response->content;
+    } else {
+      print "\n".(caller(1))[3]."(): Failed with return code ".$self->get_last_code()." - ".$self->get_last_reason()."\n";
+      return 0;
+    }
+}
 
 
 #*****************************************************************
@@ -1350,7 +1206,6 @@ Kedar Warriner, C<kedar at cpan.org>
  or through the web interface at http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Device-Nest
  I will be notified, and then you'll automatically be notified of progress on 
  your bug as I make changes.
-
 
 =head1 SUPPORT
 
@@ -1380,7 +1235,6 @@ L<http://search.cpan.org/dist/Device-Nest/>
 
 =back
 
-
 =head1 ACKNOWLEDGEMENTS
 
  Many thanks to:
@@ -1398,11 +1252,10 @@ L<http://search.cpan.org/dist/Device-Nest/>
 
  See http://dev.perl.org/licenses/ for more information.
 
-
 =cut
 
 #********************************************************************
 1; # End of Device::Nest - Return success to require/use statement
 #********************************************************************
 
-
+    
