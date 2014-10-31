@@ -37,10 +37,12 @@ BEGIN
   if ($^O eq "MSWin32"){
     use LWP::UserAgent;
     use JSON qw(decode_json encode_json);
+    use Time::HiRes qw/gettimeofday/;
     use Data::Dumper;
   } else {
     use LWP::UserAgent;
     use JSON qw(decode_json encode_json);
+    use Time::HiRes qw/gettimeofday/;
     use Data::Dumper;
   }
 }
@@ -53,11 +55,11 @@ Device::Nest - Methods for wrapping the Nest API calls so that they are
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 #*****************************************************************
 
@@ -137,6 +139,7 @@ sub new {
     $self->{'last_code'}      = '';
     $self->{'last_reason'}    = '';
     $self->{'device_url'}     = "https://developer-api.nest.com/devices.json?auth=".$self->{'auth_token'};
+	$self->{'last_exec_time'} = 0;
     
     if (!defined $self->{'debug'}) {
       $self->{'debug'} = 0;
@@ -1083,9 +1086,9 @@ sub set_Away_State {
 
 #*****************************************************************
 
-=head2 dump_Object - shows the contents of the local Neurio object
+=head2 dump_Object - shows the contents of the local Nest object
 
- shows the contents of the local Neurio object in human readable form
+ shows the contents of the local Nest object in human readable form
 
    $Nest->dump_Object();
 
@@ -1151,16 +1154,36 @@ sub get_last_reason {
     return $self->{'last_reason'};
 }
 
+#******************************************************************************
+=head2 get_last_exec_time - returns the execution time for the last fetch
+
+ Returns the number of milliseconds it took for the last fetch call
+
+   $Nest->get_last_exec_time();
+
+   This method accepts no parameters
+ 
+ Returns the number of milliseconds
+ 
+=cut
+
+sub get_last_exec_time {
+    my $self  = shift;
+    return $self->{'last_exec_time'};
+}
 
 #*****************************************************************
 
 sub __process_get {
-    my $self     = shift;
-    my $url      = shift;
-    my $tag      = shift;
-	my $response = $self->{'ua'}->get($url);
+    my $self        = shift;
+    my $url         = shift;
+    my $tag         = shift;
+    my $time_before = gettimeofday;
+	my $response    = $self->{'ua'}->get($url);
+    my $time_after  = gettimeofday;
 	
-    $self->{'last_code'}   = $response->code;
+    $self->{'last_exec_time'} = eval{($time_after-$time_before)*1000};
+    $self->{'last_code'}      = $response->code;
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
