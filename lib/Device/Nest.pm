@@ -23,7 +23,8 @@ our %EXPORT_TAGS = ( 'all' => [ qw( new
     fetch_Away_Temperature_high_F   fetch_Target_Temperature_low_F  fetch_Target_Temperature_F 
     fetch_Target_Temperature_high_F fetch_Temperature_Scale         fetch_Locale fetch_Name 
     fetch_Long_Name fetch_HVAC_Mode fetch_SW_Version                fetch_Away_State  
-    fetch_Country_Code
+    fetch_Country_Code              fetch_Can_Cool                  fetch_Can_Heat
+    fetch_Has_Fan                   fetch_Is_Online                 fetch_Is_Using_Emergency_Heat
     set_Target_Temperature_C        set_Target_Temperature_F        set_Target_Temperature_high_C
     set_Target_Temperature_low_C    set_Target_Temperature_high_F   set_Target_Temperature_low_F
     set_Away_State
@@ -55,11 +56,11 @@ Device::Nest - Methods for wrapping the Nest API calls so that they are
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 #*****************************************************************
 
@@ -225,7 +226,7 @@ sub fetch_Thermostat_Designation {
     my $self     = shift;
 	my $response = $self->{'ua'}->get($self->{'device_url'});
     
-    $self->{'last_code'}   = $response->code;
+    $self->{'last_code'} = $response->code;
     
     if ($response->is_success) {
       my $decoded_response      = decode_json($response->content);
@@ -587,29 +588,174 @@ sub fetch_Temperature_Scale {
 
 ##*****************************************************************
 #
-#=head2 fetch_Relative_Humidity - Fetch the relative humidity reported by Nest
+#=head2 fetch_Humidity - Fetch the humidity reported by Nest
 #
-# Retrieves the relative humidity reported by the Nest 
+# Retrieves the humidity reported as a percentage by the Nest 
 #
-#   $Nest->fetch_Relative_Humidity();
+#   $Nest->fetch_Humidity();
 #
 #   This method accepts no parameters
 # 
-# Returns the temperature scale
+# Returns the humidity
 # Returns 0 on failure
 # 
 #=cut
-#sub fetch_Relative_Humidity {
+#sub fetch_Humidity {
 #    my $self = shift;
 #    
 #    if (!defined $self->{'thermostat'}) {
-#      print "Nest->fetch_Relative_Humidity(): No thermostat designation found\n";
+#      print "Nest->fetch_Humidity(): No thermostat designation found\n";
 #      return 0;
 #    }
 #    
-#    return $self->__process_get($self->{'device_url'},'relative_humidity');
+#    return $self->__process_get($self->{'device_url'},'humidity');
 #}
-#
+
+
+#*****************************************************************
+
+=head2 fetch_Is_Using_Emergency_Heat - Fetches true or false
+
+ Retrieves the state of the Nest indicating whether it is using Emergency Heat 
+
+   $Nest->fetch_Is_Using_Emergency_Heat();
+
+   This method accepts no parameters
+ 
+ Returns a Boolean
+ 
+=cut
+sub fetch_Is_Using_Emergency_Heat {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "Nest->fetch_Is_Using_Emergency_Heat(): No thermostat designation found\n";
+      return 0;
+    }
+    
+    if ($self->__process_get($self->{'device_url'},'is_using_emergency_heat')) {
+      return 1;
+    } else { 
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Is_Online - Fetches true or false
+
+ Retrieves the state of the Nest indicating whether it is online 
+
+   $Nest->fetch_Is_Online();
+
+   This method accepts no parameters
+ 
+ Returns a Boolean
+ 
+=cut
+sub fetch_Is_Online {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "Nest->fetch_Is_Online(): No thermostat designation found\n";
+      return 0;
+    }
+    
+    if ($self->__process_get($self->{'device_url'},'is_online')) {
+      return 1;
+    } else { 
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Can_Heat - Fetches true or false
+
+ Retrieves the state of the Nest indicating whether it can heat
+
+   $Nest->fetch_Can_Heat();
+
+   This method accepts no parameters
+ 
+ Returns a Boolean
+ 
+=cut
+sub fetch_Can_Heat {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "Nest->fetch_Can_Heat(): No thermostat designation found\n";
+      return 0;
+    }
+    
+    if ($self->__process_get($self->{'device_url'},'can_heat')) {
+      return 1;
+    } else { 
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Can_Cool - Fetches true or false
+
+ Retrieves the state of the Nest indicating whether it can cool
+
+   $Nest->fetch_Can_Cool();
+
+   This method accepts no parameters
+ 
+ Returns a Boolean
+ 
+=cut
+sub fetch_Can_Cool {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "Nest->fetch_Can_Cool(): No thermostat designation found\n";
+      return 0;
+    }
+    
+    if ($self->__process_get($self->{'device_url'},'can_cool')) {
+      return 1;
+    } else { 
+      return 0;
+    }
+}
+
+
+#*****************************************************************
+
+=head2 fetch_Has_Fan - Fetches true or false
+
+ Retrieves the state of the Nest indicating whether it has a fan
+
+   $Nest->fetch_Has_Fan();
+
+   This method accepts no parameters
+ 
+ Returns a Boolean
+ 
+=cut
+sub fetch_Has_Fan {
+    my $self = shift;
+    
+    if (!defined $self->{'thermostat'}) {
+      print "Nest->fetch_Has_Fan(): No thermostat designation found\n";
+      return 0;
+    }
+    
+    if ($self->__process_get($self->{'device_url'},'has_fan')) {
+      return 1;
+    } else { 
+      return 0;
+    }
+}
+
 
 #*****************************************************************
 
@@ -1187,12 +1333,14 @@ sub __process_get {
     
     if ($response->is_success) {
       my $decoded_response = decode_json($response->content);
+#      print Dumper($decoded_response);
       return $decoded_response->{'thermostats'}->{$self->{'thermostat'}}->{$tag};
     } else {
       print "\n".(caller(1))[3]."(): Failed with return code ".$self->get_last_code()."\n";
       return 0;
     }
 }
+
 
 #*****************************************************************
 
